@@ -25,6 +25,7 @@ import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-m
 import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
 import { type WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-select-query-builder';
 import { applyRowLevelPermissionPredicates } from 'src/engine/twenty-orm/utils/apply-row-level-permission-predicates.util';
+import { applyAppScopeFilterFromContext } from 'src/engine/core-modules/app-scope/utils/apply-app-scope-filter-from-context.util';
 import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace.repository';
 
 const RECORDS_PER_GROUP_LIMIT = 10;
@@ -92,6 +93,12 @@ export class GroupByWithRecordsService {
       internalContext: queryBuilderWithFiltersAndWithoutGroupBy.internalContext,
       authContext: queryBuilderWithFiltersAndWithoutGroupBy.authContext,
       featureFlagMap: queryBuilderWithFiltersAndWithoutGroupBy.featureFlagMap,
+    });
+
+    applyAppScopeFilterFromContext({
+      queryBuilder: queryBuilderWithFiltersAndWithoutGroupBy,
+      objectMetadata: flatObjectMetadata,
+      internalContext: queryBuilderWithFiltersAndWithoutGroupBy.internalContext,
     });
 
     const queryBuilderWithPartitionBy = this.addPartitionByToQueryBuilder({

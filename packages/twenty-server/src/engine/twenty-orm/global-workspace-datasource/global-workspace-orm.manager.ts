@@ -16,6 +16,11 @@ import {
 import type { RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { convertClassNameToObjectMetadataName } from 'src/engine/workspace-manager/utils/convert-class-to-object-metadata-name.util';
+import { isDefined } from 'twenty-shared/utils';
+import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
+import { APP_SCOPE_ACCESS_OBJECT_NAME_SINGULAR } from 'src/engine/core-modules/app-scope/constants/app-scope.constants';
+import { type AppScopeConfig } from 'src/engine/core-modules/app-scope/types/app-scope-config.type';
+import { resolveAppScopeConfig } from 'src/engine/core-modules/app-scope/utils/resolve-app-scope-config.util';
 
 @Injectable()
 export class GlobalWorkspaceOrmManager {
@@ -112,7 +117,12 @@ export class GlobalWorkspaceOrmManager {
     const { idByNameSingular: objectIdByNameSingular } =
       buildObjectIdByNameMaps(flatObjectMetadataMaps);
 
-    return {
+    const appScopeConfig = resolveAppScopeConfig({
+      flatObjectMetadataMaps,
+      flatFieldMetadataMaps,
+    });
+
+    const baseContext: ORMWorkspaceContext = {
       authContext,
       flatObjectMetadataMaps,
       flatFieldMetadataMaps,
@@ -125,7 +135,71 @@ export class GlobalWorkspaceOrmManager {
       entityMetadatas,
       userWorkspaceRoleMap,
       apiKeyRoleMap,
+      appScopeConfig,
+      appScopeAccessibleAppIds: null,
     };
+
+    const appScopeAccessibleAppIds = await this.loadAppScopeAccessibleAppIds({
+      workspaceId,
+      authContext,
+      appScopeConfig,
+      baseContext,
+    });
+
+    return { ...baseContext, appScopeAccessibleAppIds };
+  }
+
+  // Loads the set of app ids the caller may access. null = bypass (no model,
+  // no grant junction, or non-user context). The grant records are read with
+  // permission checks bypassed so this lookup never filters itself.
+  private async loadAppScopeAccessibleAppIds({
+    workspaceId,
+    authContext,
+    appScopeConfig,
+    baseContext,
+  }: {
+    workspaceId: string;
+    authContext: WorkspaceAuthContext;
+    appScopeConfig: AppScopeConfig | null;
+    baseContext: ORMWorkspaceContext;
+  }): Promise<string[] | null> {
+    if (!isDefined(appScopeConfig) || !isDefined(appScopeConfig.appAccess)) {
+      return null;
+    }
+
+    if (!isUserAuthContext(authContext)) {
+      return null;
+    }
+
+    const workspaceMemberId = authContext.workspaceMember?.id;
+
+    if (!isDefined(workspaceMemberId)) {
+      return null;
+    }
+
+    const { appAccess } = appScopeConfig;
+
+    const rows = await withWorkspaceContext(baseContext, async () => {
+      const repository = await this.getRepository(
+        workspaceId,
+        APP_SCOPE_ACCESS_OBJECT_NAME_SINGULAR,
+        { shouldBypassPermissionChecks: true },
+      );
+
+      return repository
+        .createQueryBuilder(APP_SCOPE_ACCESS_OBJECT_NAME_SINGULAR)
+        .select(
+          `${APP_SCOPE_ACCESS_OBJECT_NAME_SINGULAR}.${appAccess.appJoinColumnName}`,
+          'appId',
+        )
+        .where(
+          `${APP_SCOPE_ACCESS_OBJECT_NAME_SINGULAR}.${appAccess.memberJoinColumnName} = :workspaceMemberId`,
+          { workspaceMemberId },
+        )
+        .getRawMany<{ appId: string | null }>();
+    });
+
+    return rows.map((row) => row.appId).filter(isDefined);
   }
 
   private async loadLiteWorkspaceContext(

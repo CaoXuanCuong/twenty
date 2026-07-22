@@ -115,6 +115,8 @@ export class WorkspaceEntityManager extends EntityManager {
       apiKeyRoleMap: context.apiKeyRoleMap,
       eventEmitterService: this.eventEmitterService,
       coreDataSource: this.connection.coreDataSource,
+      appScopeConfig: context.appScopeConfig,
+      appScopeAccessibleAppIds: context.appScopeAccessibleAppIds,
     };
   }
 

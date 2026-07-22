@@ -32,6 +32,7 @@ import { formatData } from 'src/engine/twenty-orm/utils/format-data.util';
 import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
 import { formatTwentyOrmEventToDatabaseBatchEvent } from 'src/engine/twenty-orm/utils/format-twenty-orm-event-to-database-batch-event.util';
 import { getObjectMetadataFromEntityTarget } from 'src/engine/twenty-orm/utils/get-object-metadata-from-entity-target.util';
+import { validateAppScopeForWrite } from 'src/engine/core-modules/app-scope/utils/validate-app-scope-for-write.util';
 import { validateRLSPredicatesForRecords } from 'src/engine/twenty-orm/utils/validate-rls-predicates-for-records.util';
 
 export class WorkspaceInsertQueryBuilder<
@@ -218,6 +219,17 @@ export class WorkspaceInsertQueryBuilder<
 
         this.expressionMap.valuesSet = updatedValues;
       }
+
+      validateAppScopeForWrite({
+        objectMetadata,
+        internalContext: this.internalContext,
+        rows: (Array.isArray(this.expressionMap.valuesSet)
+          ? this.expressionMap.valuesSet
+          : [this.expressionMap.valuesSet]) as Array<
+          Record<string, unknown> | undefined | null
+        >,
+        shouldBypassPermissionChecks: this.shouldBypassPermissionChecks,
+      });
 
       this.validateRLSPredicatesForInsert();
 

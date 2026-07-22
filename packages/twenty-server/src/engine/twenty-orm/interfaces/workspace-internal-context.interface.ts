@@ -9,6 +9,7 @@ import { type UserWorkspaceRoleMap } from 'src/engine/metadata-modules/role-targ
 import { type FlatRowLevelPermissionPredicateGroupMaps } from 'src/engine/metadata-modules/row-level-permission-predicate/types/flat-row-level-permission-predicate-group-maps.type';
 import { type FlatRowLevelPermissionPredicateMaps } from 'src/engine/metadata-modules/row-level-permission-predicate/types/flat-row-level-permission-predicate-maps.type';
 import { type WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
+import { type AppScopeConfig } from 'src/engine/core-modules/app-scope/types/app-scope-config.type';
 
 export interface WorkspaceInternalContext {
   workspaceId: string;
@@ -23,4 +24,9 @@ export interface WorkspaceInternalContext {
   apiKeyRoleMap: Record<string, string>;
   eventEmitterService: WorkspaceEventEmitter;
   coreDataSource: DataSource;
+  // App-scope enforcement. Undefined config = no app-scope model in this
+  // workspace. Undefined/null accessibleAppIds = bypass (non-user context or
+  // bypass role); an array (possibly empty) = the caller's accessible app ids.
+  appScopeConfig?: AppScopeConfig | null;
+  appScopeAccessibleAppIds?: string[] | null;
 }

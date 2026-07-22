@@ -25,6 +25,7 @@ import { WorkspaceInsertQueryBuilder } from 'src/engine/twenty-orm/repository/wo
 import { WorkspaceSoftDeleteQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-soft-delete-query-builder';
 import { WorkspaceUpdateQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-update-query-builder';
 import { applyRowLevelPermissionPredicates } from 'src/engine/twenty-orm/utils/apply-row-level-permission-predicates.util';
+import { applyAppScopeFilterFromContext } from 'src/engine/core-modules/app-scope/utils/apply-app-scope-filter-from-context.util';
 import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
 import { getObjectMetadataFromEntityTarget } from 'src/engine/twenty-orm/utils/get-object-metadata-from-entity-target.util';
 
@@ -390,6 +391,12 @@ export class WorkspaceSelectQueryBuilder<
       internalContext: this.internalContext,
       authContext: this.authContext,
       featureFlagMap: this.featureFlagMap,
+    });
+
+    applyAppScopeFilterFromContext({
+      queryBuilder: this,
+      objectMetadata,
+      internalContext: this.internalContext,
     });
   }
 }
